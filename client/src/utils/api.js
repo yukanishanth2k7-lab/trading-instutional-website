@@ -1,4 +1,9 @@
-const API_BASE = '/api';
+// API Configuration - Environment-based for production deployment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE = `${API_BASE_URL}/api`;
+
+// Export base URL for SSE connections
+export const getApiBaseUrl = () => API_BASE_URL;
 
 export async function fetchHealth() {
   try {
@@ -19,7 +24,6 @@ export async function fetchMarketData() {
   } catch (err) {
     console.warn('Backend unavailable, using direct internet market data API feed.');
     
-    // Direct Client-Side Fallback for static deployments (using real free internet APIs or simulated)
     return {
       updatedAt: 'Live Direct',
       networkStatus: 'DIRECT CLIENT SYNC',
@@ -37,7 +41,6 @@ export async function fetchMarketData() {
   }
 }
 
-// Generates fallback historical data for client-only deployments
 function getFallbackCandles(basePrice, decimals) {
   const candles = [];
   let currentPrice = basePrice;
@@ -67,11 +70,8 @@ export async function fetchTradingGraph(symbol = 'XAUUSD', timeframe = '15m') {
     if (!res.ok) throw new Error('Fetch failed');
     return await res.json();
   } catch (err) {
-    // Return direct client-side fallback data if server is down (static deployment)
     const pairs = (await fetchMarketData()).pairs;
     const info = pairs.find(p => p.symbol === symbol) || pairs[0];
-    
-    // Attempt to pull real Binance internet data if crypto directly from browser!
     const candles = getFallbackCandles(Number(info.price), info.decimals || 2);
     
     return {
@@ -91,7 +91,7 @@ export async function fetchTradingGraph(symbol = 'XAUUSD', timeframe = '15m') {
       orderBook: null,
       candles,
       smcOverlays: null,
-      isDirectClientMock: true // Flag to tell the frontend to use local tick loop
+      isDirectClientMock: true
     };
   }
 }

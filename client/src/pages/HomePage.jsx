@@ -21,6 +21,7 @@ import {
 import ThreeHeroScene from '../components/ThreeHeroScene';
 import ThreeSynapticCore from '../components/ThreeSynapticCore';
 import LiveTradingGraph from '../components/LiveTradingGraph';
+import { submitChallenge } from '../utils/api';
 
 export default function HomePage({ navigate }) {
   // Strategy Simulator State (Section 3)
@@ -62,17 +63,12 @@ export default function HomePage({ navigate }) {
   const handleChallengeSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/challenge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: chName,
-          email: chEmail,
-          company: chCompany,
-          bottleneck: chBottleneck
-        })
+      const data = await submitChallenge({
+        name: chName,
+        email: chEmail,
+        company: chCompany,
+        bottleneck: chBottleneck
       });
-      const data = await res.json();
       setChallengeTicket(data.ticketId || ('RSP-SPRINT-' + Math.floor(Math.random() * 9000 + 1000)));
     } catch {
       setChallengeTicket('RSP-SPRINT-' + Math.floor(Math.random() * 9000 + 1000));

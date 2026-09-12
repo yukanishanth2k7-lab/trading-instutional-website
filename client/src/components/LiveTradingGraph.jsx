@@ -15,7 +15,7 @@ import {
   Layers,
   Sparkles
 } from 'lucide-react';
-import { fetchTradingGraph } from '../utils/api';
+import { fetchTradingGraph, getApiBaseUrl } from '../utils/api';
 
 export default function LiveTradingGraph({ navigate }) {
   const [selectedSymbol, setSelectedSymbol] = useState('XAUUSD');
@@ -78,9 +78,10 @@ export default function LiveTradingGraph({ navigate }) {
 
     // Setup Live Server-Sent Events (SSE) Stream with fallback polling
     let pollInterval = null;
+    const apiBaseUrl = getApiBaseUrl();
 
     try {
-      const es = new EventSource(`/api/trading-stream/${selectedSymbol}`);
+      const es = new EventSource(`${apiBaseUrl}/api/trading-stream/${selectedSymbol}`);
       eventSourceRef.current = es;
 
       es.onopen = () => {
