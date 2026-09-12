@@ -1,0 +1,15 @@
+[
+  {
+    "id": "RSP-MTWEGO05",
+    "name": "Verification Client",
+    "email": "client@example.com",
+    "phone": "Not provided",
+    "company": "Not provided",
+    "service": "Algorithmic Trading",
+    "budget": "Undisclosed",
+    "message": "Platform verification test message.",
+    "status": "pending_review",
+    "createdAt": "2026-09-11T03:31:47.717Z",
+    "slaReplyHours": 4
+  }
+]

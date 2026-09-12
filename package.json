@@ -1,0 +1,16 @@
+{
+  "name": "reverie-synaptic-pulse",
+  "version": "2.4.0",
+  "description": "Reverie Synaptic Pulse (RSP) - Full Stack Algorithmic Trading & AI Solutions Platform",
+  "private": true,
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "dev:server": "node --watch server/index.js",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build",
+    "start": "node server/index.js"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0"
+  }
+}
