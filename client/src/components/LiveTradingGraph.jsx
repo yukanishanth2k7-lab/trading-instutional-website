@@ -76,10 +76,8 @@ export default function LiveTradingGraph({ navigate }) {
 
     loadInitialData();
 
-    // Setup Live Server-Sent Events (SSE) Stream
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    // Setup Live Server-Sent Events (SSE) Stream with fallback polling
+    let pollInterval = null;
 
     try {
       const es = new EventSource(`/api/trading-stream/${selectedSymbol}`);
@@ -104,7 +102,7 @@ export default function LiveTradingGraph({ navigate }) {
               setOrderBook(payload.orderBook);
             }
 
-            // Update forming candle in real-time
+            // Update forming candle smoothly in real-time without replacing past candles
             setCandles((prevList) => {
               if (!prevList || prevList.length === 0) return prevList;
               const next = [...prevList];
@@ -112,7 +110,7 @@ export default function LiveTradingGraph({ navigate }) {
               last.close = newPrice;
               if (newPrice > last.high) last.high = newPrice;
               if (newPrice < last.low) last.low = newPrice;
-              last.volume = (last.volume || 100) + 2;
+              last.volume = (last.volume || 100) + 1;
               last.ema20 = Number((newPrice * 0.095 + (last.ema20 || newPrice) * 0.905).toFixed(4));
               next[next.length - 1] = last;
               return next;
@@ -124,34 +122,35 @@ export default function LiveTradingGraph({ navigate }) {
       };
 
       es.onerror = () => {
-        if (isMounted) setConnectionStatus('POLLING');
+        if (isMounted) {
+          setConnectionStatus('POLLING');
+          // Start fallback polling ONLY if SSE fails
+          if (!pollInterval) {
+            pollInterval = setInterval(async () => {
+              const liveData = await fetchTradingGraph(selectedSymbol, timeframe);
+              if (isMounted && liveData && liveData.success) {
+                setCurrentPrice((prev) => {
+                  if (liveData.currentPrice > prev) setTickDirection('up');
+                  else if (liveData.currentPrice < prev) setTickDirection('down');
+                  return liveData.currentPrice;
+                });
+                if (liveData.orderBook) setOrderBook(liveData.orderBook);
+              }
+            }, 3000);
+          }
+        }
         es.close();
       };
     } catch (e) {
       setConnectionStatus('POLLING');
     }
 
-    // High frequency fallback polling in case SSE is blocked by proxy
-    const pollInterval = setInterval(async () => {
-      const liveData = await fetchTradingGraph(selectedSymbol, timeframe);
-      if (isMounted && liveData && liveData.success) {
-        setCurrentPrice((prev) => {
-          if (liveData.currentPrice > prev) setTickDirection('up');
-          else if (liveData.currentPrice < prev) setTickDirection('down');
-          return liveData.currentPrice;
-        });
-        setCandles(liveData.candles || []);
-        setOrderBook(liveData.orderBook);
-        setGraphData((prev) => ({ ...prev, ...liveData }));
-      }
-    }, 2000);
-
     return () => {
       isMounted = false;
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
       }
-      clearInterval(pollInterval);
+      if (pollInterval) clearInterval(pollInterval);
     };
   }, [selectedSymbol, timeframe]);
 
@@ -171,8 +170,13 @@ export default function LiveTradingGraph({ navigate }) {
   const innerHeight = chartHeight - padding.top - padding.bottom;
 
   const validCandles = candles && candles.length > 0 ? candles : [];
-  const minPrice = validCandles.length > 0 ? Math.min(...validCandles.map((c) => c.low)) : currentPrice * 0.99;
-  const maxPrice = validCandles.length > 0 ? Math.max(...validCandles.map((c) => c.high)) : currentPrice * 1.01;
+  const rawMin = validCandles.length > 0 ? Math.min(...validCandles.map((c) => c.low)) : currentPrice * 0.99;
+  const rawMax = validCandles.length > 0 ? Math.max(...validCandles.map((c) => c.high)) : currentPrice * 1.01;
+  const rawDiff = rawMax - rawMin || 1;
+  
+  // Add 5% padding buffer to prevent graph jumping on small tick changes
+  const minPrice = rawMin - rawDiff * 0.05;
+  const maxPrice = rawMax + rawDiff * 0.05;
   const priceRange = maxPrice - minPrice || 1;
 
   const maxVolume = validCandles.length > 0 ? Math.max(...validCandles.map((c) => c.volume || 1)) : 1000;
